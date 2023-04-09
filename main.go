@@ -13,9 +13,9 @@ import (
 )
 
 
-func Quote(url string, queryParams string) (string) {
+func Get(url string, queryParams string) (string) {
 
-	msg := "Key, Value\n"
+	msg := ""
 
 	resp, err := http.Get(url+queryParams)
 
@@ -66,7 +66,6 @@ func main() {
 
 
 	bot.Debug = true
-
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
@@ -100,7 +99,7 @@ func main() {
 			case "get":
 				if baseURL, ok := baseURLs[userID]; ok {
 					queryString := update.Message.CommandArguments()
-					txt := Quote(baseURL,queryString)
+					txt := Get(baseURL,queryString)
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, txt)
 					bot.Send(msg)
 				} else {
