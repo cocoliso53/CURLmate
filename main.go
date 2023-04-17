@@ -7,8 +7,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"os"
 
+	"github.com/joho/godotenv"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	
 
 )
 
@@ -53,30 +56,57 @@ func Get(url string, queryParams string) (string) {
 
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI("")
+
+	err := godotenv.Load("config.env")
+	if err != nil {
+		log.Fatal("Error loading config")
+	}
+
+	tgAPI := os.Getenv("TGAPI")
+	URL := os.Getenv("URL")
 
 	var baseURLs map[int64]string
-
 	baseURLs = make(map[int64]string)
 	
-
+	bot, err := tgbotapi.NewBotAPI(tgAPI)
 	if err != nil {
 		log.Panic(err)
 	}
-
+	
 
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 30
+	wh, _ := tgbotapi.NewWebhook(URL+bot.Token)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	updates := bot.GetUpdatesChan(u)
+
+	_, err = bot.Request(wh)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	info, err := bot.GetWebhookInfo()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if info.LastErrorDate != 0 {
+		log.Printf("Telergam callback failed: %s", info.LastErrorMessage)
+	}
+
+	updates := bot.ListenForWebhook("/" + bot.Token)
+	go http.ListenAndServe("0.0.0.0:443",nil)
 
 	for update := range updates {
+		
 		if update.Message == nil {
-			continue
+			return
 		}
+
+		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		if update.Message.IsCommand() {
 			userID := update.Message.From.ID
@@ -106,7 +136,6 @@ func main() {
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "No URL set")
 					bot.Send(msg)
 				}
-				
 			}
 		}
 	}
